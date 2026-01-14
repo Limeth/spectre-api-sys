@@ -1,0 +1,3 @@
+[submodule "spectre-api-c"]
+	path = spectre-api-c
+	url = https://github.com/Limeth/spectre-api.git
