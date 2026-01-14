@@ -64,6 +64,8 @@ fn main() {
         .clang_args(["-x", "c", "-std=c11"])
         .clang_args(include_dirs.iter().map(|dir| format!("-I{dir}")))
         .use_core()
+        .allowlist_function("spectre_.*")
+        .allowlist_type("Spectre.*")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
