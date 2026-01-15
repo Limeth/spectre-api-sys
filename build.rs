@@ -2,6 +2,7 @@ use std::env;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
+use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
 use duct::cmd;
 
 // macro_rules! debug {
@@ -66,6 +67,17 @@ fn main() {
         .use_core()
         .allowlist_function("spectre_.*")
         .allowlist_type("Spectre.*")
+        .parse_callbacks(Box::new(StripEnumPrefix))
+        .rustified_non_exhaustive_enum("SpectreAlgorithm.*")
+        .rustified_non_exhaustive_enum("SpectreKeyPurpose.*")
+        .bitfield_enum("SpectreResultClass.*")
+        .bitfield_enum("SpectreResultFeature.*")
+        .rustified_non_exhaustive_enum("SpectreResultType.*")
+        .rustified_non_exhaustive_enum("SpectreCounter.*")
+        .rustified_non_exhaustive_enum("SpectreIdenticonColor.*")
+        .rustified_non_exhaustive_enum("SpectreLogLevel.*")
+        .rustified_non_exhaustive_enum("SpectreFormat.*")
+        .rustified_non_exhaustive_enum("SpectreMarshalErrorType.*")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
@@ -79,4 +91,24 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+}
+
+#[derive(Debug)]
+struct StripEnumPrefix;
+
+impl ParseCallbacks for StripEnumPrefix {
+    fn enum_variant_name(
+        &self,
+        enum_name: Option<&str>,
+        original_variant_name: &str,
+        _variant_value: EnumVariantValue,
+    ) -> Option<String> {
+        if let Some(enum_name) = enum_name
+            && original_variant_name.starts_with(enum_name)
+        {
+            Some(original_variant_name[enum_name.len()..].to_string())
+        } else {
+            None
+        }
+    }
 }
