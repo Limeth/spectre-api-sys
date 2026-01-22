@@ -8,3 +8,4 @@ edition = "2024"
 [build-dependencies]
 bindgen = "0.72.1"
 duct = "1.1.1"
+cc = "1.2.53"

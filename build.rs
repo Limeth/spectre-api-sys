@@ -19,19 +19,18 @@ fn main() {
     // // shared library.
     // println!("cargo:rustc-link-lib=bz2");
 
-    let cc = std::env::var_os("SPECTRE_API_SYS_CC")
-        .map(|os_str| {
-            os_str
-                .into_string()
-                .expect("Environment variable `SPECTRE_API_SYS_CC` must be UTF-8.")
-        })
-        .unwrap_or_else(|| "cc".to_string());
+    let compiler = cc::Build::new().get_compiler();
+    let compiler_path = compiler.path().file_name().unwrap(); // For some reason, `path` would return a relative path like `./cc`.
 
     // Figure out the default include directories of the provided C compiler.
     let include_dirs = {
         // This should be doable with the stdlib, but I couldn't figure out how to capture the output.
-        let command = cmd!(&cc, "-xc", "-E", "-v", "-");
-        let reader = command.stderr_to_stdout().reader().unwrap_or_else(|error| panic!("Failed to find default include directories. Is `SPECTRE_API_SYS_CC` correct? Currently it is set to: {cc:?}. {error}"));
+        let command = cmd!(compiler_path, "-xc", "-E", "-v", "-");
+        let reader = command.stderr_to_stdout().reader().unwrap_or_else(|error| {
+            panic!(
+                "Failed to find default include directories using the compiler {compiler_path:?}. {error}",
+            )
+        });
         let mut collecting = false;
         let mut include_dirs = Vec::new();
 
