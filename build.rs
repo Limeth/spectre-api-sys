@@ -30,8 +30,8 @@ fn main() {
     // Figure out the default include directories of the provided C compiler.
     let include_dirs = {
         // This should be doable with the stdlib, but I couldn't figure out how to capture the output.
-        let command = cmd!(cc, "-xc", "-E", "-v", "-");
-        let reader = command.stderr_to_stdout().reader().unwrap();
+        let command = cmd!(&cc, "-xc", "-E", "-v", "-");
+        let reader = command.stderr_to_stdout().reader().unwrap_or_else(|error| panic!("Failed to find default include directories. Is `SPECTRE_API_SYS_CC` correct? Currently it is set to: {cc:?}. {error}"));
         let mut collecting = false;
         let mut include_dirs = Vec::new();
 
