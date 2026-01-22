@@ -19,13 +19,17 @@ fn main() {
     // // shared library.
     // println!("cargo:rustc-link-lib=bz2");
 
-    let compiler = cc::Build::new().get_compiler();
-    let compiler_path = compiler.path().file_name().unwrap(); // For some reason, `path` would return a relative path like `./cc`.
-
     // Figure out the default include directories of the provided C compiler.
-    let include_dirs = {
+    let include_dirs = env::var("EXPLICITLY_INCLUDE_DEFAULT_DIRS").is_ok().then(|| {
+        let compiler = cc::Build::new().get_compiler();
+        let compiler_path = if compiler.path().is_absolute() {
+            compiler.path().display().to_string()
+        } else {
+            compiler.path().file_name().unwrap().display().to_string()
+        };
+
         // This should be doable with the stdlib, but I couldn't figure out how to capture the output.
-        let command = cmd!(compiler_path, "-xc", "-E", "-v", "-");
+        let command = cmd!(&compiler_path, "-xc", "-E", "-v", "-");
         let reader = command.stderr_to_stdout().reader().unwrap_or_else(|error| {
             panic!(
                 "Failed to find default include directories using the compiler {compiler_path:?}. {error}",
@@ -52,17 +56,16 @@ fn main() {
         }
 
         include_dirs
-    };
+    });
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
-    let bindings = bindgen::Builder::default()
+    let mut bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
         .clang_args(["-x", "c", "-std=c11"])
-        .clang_args(include_dirs.iter().map(|dir| format!("-I{dir}")))
         .use_core()
         .allowlist_function("spectre_.*")
         .allowlist_type("Spectre.*")
@@ -79,7 +82,13 @@ fn main() {
         .rustified_non_exhaustive_enum("SpectreMarshalErrorType.*")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
+
+    if let Some(include_dirs) = include_dirs {
+        bindings = bindings.clang_args(include_dirs.iter().map(|dir| format!("-I{dir}")));
+    }
+
+    let bindings = bindings
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
