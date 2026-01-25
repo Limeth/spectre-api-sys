@@ -75,7 +75,7 @@ fn main() {
         .bitfield_enum("SpectreResultClass.*")
         .bitfield_enum("SpectreResultFeature.*")
         .rustified_non_exhaustive_enum("SpectreResultType.*")
-        .rustified_non_exhaustive_enum("SpectreCounter.*")
+        .constified_enum_module("SpectreCounter.*")
         .rustified_non_exhaustive_enum("SpectreIdenticonColor.*")
         .rustified_non_exhaustive_enum("SpectreLogLevel.*")
         .rustified_non_exhaustive_enum("SpectreFormat.*")
