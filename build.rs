@@ -2,7 +2,7 @@ use std::env;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use bindgen::callbacks::{EnumVariantValue, ParseCallbacks};
+use bindgen::callbacks::{DeriveInfo, EnumVariantValue, ParseCallbacks, TypeKind};
 use duct::cmd;
 
 // macro_rules! debug {
@@ -70,16 +70,19 @@ fn main() {
         .allowlist_function("spectre_.*")
         .allowlist_type("Spectre.*")
         .parse_callbacks(Box::new(StripEnumPrefix))
-        .rustified_non_exhaustive_enum("SpectreAlgorithm.*")
-        .rustified_non_exhaustive_enum("SpectreKeyPurpose.*")
         .bitfield_enum("SpectreResultClass.*")
         .bitfield_enum("SpectreResultFeature.*")
-        .rustified_non_exhaustive_enum("SpectreResultType.*")
-        .constified_enum_module("SpectreCounter.*")
-        .rustified_non_exhaustive_enum("SpectreIdenticonColor.*")
-        .rustified_non_exhaustive_enum("SpectreLogLevel.*")
-        .rustified_non_exhaustive_enum("SpectreFormat.*")
-        .rustified_non_exhaustive_enum("SpectreMarshalErrorType.*")
+        .constified_enum_module("SpectreCounter.*");
+
+    for enum_name in RUSTIFIED_ENUMS {
+        bindings = bindings.rustified_non_exhaustive_enum(format!("{enum_name}.*"));
+    }
+
+    if cfg!(feature = "strum") {
+        bindings = bindings.parse_callbacks(Box::new(DeriveFromRepr));
+    }
+
+    bindings = bindings
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
@@ -99,6 +102,38 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+}
+
+/// Enums that are generated as Rust enums.
+/// Each name is used as a prefix of the matched C type names.
+const RUSTIFIED_ENUMS: &[&str] = &[
+    "SpectreAlgorithm",
+    "SpectreKeyPurpose",
+    "SpectreResultType",
+    "SpectreIdenticonColor",
+    "SpectreLogLevel",
+    "SpectreFormat",
+    "SpectreMarshalErrorType",
+];
+
+/// Derives `strum::FromRepr` for the Rust enums, which provides a safe conversion
+/// from the integer representation via the generated `from_repr` function.
+/// Only registered when the `strum` feature is enabled.
+#[derive(Debug)]
+struct DeriveFromRepr;
+
+impl ParseCallbacks for DeriveFromRepr {
+    fn add_derives(&self, info: &DeriveInfo<'_>) -> Vec<String> {
+        if info.kind == TypeKind::Enum
+            && RUSTIFIED_ENUMS
+                .iter()
+                .any(|enum_name| info.name.starts_with(enum_name))
+        {
+            vec!["strum::FromRepr".into()]
+        } else {
+            vec![]
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -3,7 +3,12 @@ name = "spectre-api-sys"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+# Derive `strum::FromRepr` for the generated Rust enums.
+strum = ["dep:strum"]
+
 [dependencies]
+strum = { version = "0.28", default-features = false, features = ["derive"], optional = true }
 
 [build-dependencies]
 bindgen = "0.72.1"
